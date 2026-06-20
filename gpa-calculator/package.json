@@ -1,0 +1,17 @@
+{
+  "name": "gpa-calculator",
+  "version": "1.0.0",
+  "description": "Full-stack Student GPA & CGPA Calculator — React + Flask + SQLite",
+  "private": true,
+  "scripts": {
+    "install:frontend": "cd frontend && npm install",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "dev:backend": "cd backend && python app.py",
+    "seed": "cd backend && python seed.py",
+    "setup": "npm run install:frontend && cd backend && pip install -r requirements.txt"
+  },
+  "keywords": ["gpa", "cgpa", "calculator", "university", "academic", "flask", "react"],
+  "author": "",
+  "license": "MIT"
+}
