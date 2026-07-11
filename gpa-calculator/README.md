@@ -6,7 +6,7 @@ A full-stack web application for university students to track academic performan
 
 ## Features
 
-- **Course management* — add, edit, and delete courses with name, code, credit hours, and grade
+- **Course management** — add, edit, and delete courses with name, code, credit hours, and grade
 - **Automatic GPA calculation** — semester GPA recalculated instantly on every change
 - **CGPA tracking** — cumulative GPA computed across all semesters with weighted credits
 - **Multiple grading scales** — 4.0 (US/International), 5.0 (Nigerian/West African), 7.0 (Australian)
