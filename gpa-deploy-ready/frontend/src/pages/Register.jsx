@@ -5,10 +5,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
-const SCALES = [
-  { value: "4.0", label: "4.0 Scale (A–F)" },
-  { value: "5.0", label: "5.0 Scale (A–F, Nigerian)" },
-  { value: "7.0", label: "7.0 Scale (Australian)" },
+const REGIONS = [
+  { value: "us_international",    label: "United States / International", scale: "4.0" },
+  { value: "nigeria_west_africa", label: "Nigeria / West Africa",          scale: "5.0" },
+  { value: "australia",           label: "Australia",                      scale: "7.0" },
 ];
 
 export default function Register() {
@@ -16,7 +16,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     username: "", email: "", password: "", full_name: "",
-    university: "", program: "", grading_scale: "4.0",
+    university: "", program: "", region: "us_international",
   });
   const [busy, setBusy] = useState(false);
 
@@ -88,13 +88,18 @@ export default function Register() {
               <input name="program" className="input" placeholder="B.Sc. Computer Science"
                 value={form.program} onChange={handle} />
             </div>
-            <div>
-              <label className="label">Grading scale</label>
-              <select name="grading_scale" className="input" value={form.grading_scale} onChange={handle}>
-                {SCALES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
+            <div className="col-span-2">
+              <label className="label">Region</label>
+              <select name="region" required className="input" value={form.region} onChange={handle}>
+                {REGIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
+              <p className="text-xs text-gray-400 mt-1">
+                Your grading scale ({REGIONS.find((r) => r.value === form.region)?.scale}) is set
+                automatically based on your region and can't be changed independently — this
+                keeps your GPA calculations accurate.
+              </p>
             </div>
           </div>
 

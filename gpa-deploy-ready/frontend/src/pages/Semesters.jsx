@@ -3,12 +3,24 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api from "../utils/api";
-import { formatGpa } from "../utils/gpa";
+import { useAuth } from "../context/AuthContext";
+import { formatGpa, classifyGpa } from "../utils/gpa";
 import toast from "react-hot-toast";
 
 const TERMS = ["Fall", "Spring", "Summer", "Winter"];
 
+const BADGE_MAP = {
+  green:  "badge-green",
+  blue:   "badge-blue",
+  yellow: "badge-yellow",
+  orange: "badge-orange",
+  red:    "badge-red",
+  gray:   "badge-gray",
+};
+
 export default function Semesters() {
+  const { user } = useAuth();
+  const scale = user?.grading_scale || "4.0";
   const [semesters, setSemesters] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [showForm,  setShowForm]  = useState(false);
@@ -114,6 +126,8 @@ export default function Semesters() {
         <div className="space-y-3">
           {semesters.map((sem) => {
             const credits = sem.courses?.reduce((a, c) => a + c.credit_hours, 0) || 0;
+            const classification = sem.courses?.length ? classifyGpa(sem.gpa, scale) : null;
+            const badgeCls = classification ? (BADGE_MAP[classification.color] || "badge-gray") : null;
             return (
               <div key={sem.id} className="card p-5 flex items-center gap-4">
                 <div className="flex-1 min-w-0">
@@ -128,6 +142,9 @@ export default function Semesters() {
                 <div className="text-right shrink-0">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">GPA</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">{formatGpa(sem.gpa)}</p>
+                  {classification && (
+                    <span className={`${badgeCls} mt-1`}>{classification.cls}</span>
+                  )}
                 </div>
 
                 <div className="flex gap-2 shrink-0">

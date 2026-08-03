@@ -60,6 +60,7 @@ def seed():
             full_name     = "Alex Johnson",
             university    = "State University of Technology",
             program       = "B.Sc. Computer Science",
+            region        = "us_international",
             grading_scale = "4.0",
         )
         user.set_password("demo1234")

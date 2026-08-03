@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
-const SCALES = [
-  { value: "4.0", label: "4.0 Scale (Standard US/International)" },
-  { value: "5.0", label: "5.0 Scale (Nigerian & West African)" },
-  { value: "7.0", label: "7.0 Scale (Australian)" },
+const REGIONS = [
+  { value: "us_international",    label: "United States / International", scale: "4.0" },
+  { value: "nigeria_west_africa", label: "Nigeria / West Africa",          scale: "5.0" },
+  { value: "australia",           label: "Australia",                      scale: "7.0" },
 ];
 
 export default function Profile() {
@@ -16,7 +16,7 @@ export default function Profile() {
     full_name:     user?.full_name     || "",
     university:    user?.university    || "",
     program:       user?.program       || "",
-    grading_scale: user?.grading_scale || "4.0",
+    region:        user?.region        || "us_international",
     password:      "",
     confirm:       "",
   });
@@ -33,10 +33,10 @@ export default function Profile() {
     setSaving(true);
     try {
       const payload = {
-        full_name:     form.full_name,
-        university:    form.university,
-        program:       form.program,
-        grading_scale: form.grading_scale,
+        full_name:  form.full_name,
+        university: form.university,
+        program:    form.program,
+        region:     form.region,
       };
       if (form.password) payload.password = form.password;
       await updateProfile(payload);
@@ -88,27 +88,27 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Grading scale */}
+        {/* Region / grading scale */}
         <div className="card p-5 space-y-4">
-          <h2 className="section-header">Grading Scale</h2>
+          <h2 className="section-header">Region & Grading Scale</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            This affects how letter grades are converted to GPA points.
-            Changing this will re-calculate all existing GPAs on next login.
+            Your grading scale is set automatically from your region, so it always matches
+            how your institution actually grades. Changing region will re-calculate all
+            existing GPAs on next login.
           </p>
-          <div className="space-y-2">
-            {SCALES.map((s) => (
-              <label key={s.value} className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio" name="grading_scale" value={s.value}
-                  checked={form.grading_scale === s.value}
-                  onChange={handle}
-                  className="text-primary-600 focus:ring-primary-500"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{s.label}</p>
-                </div>
-              </label>
-            ))}
+          <div>
+            <label className="label">Region</label>
+            <select name="region" className="input" value={form.region} onChange={handle}>
+              {REGIONS.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-500 dark:text-gray-400">Grading scale:</span>
+            <span className="badge-blue">
+              {REGIONS.find((r) => r.value === form.region)?.scale} scale
+            </span>
           </div>
         </div>
 

@@ -2,6 +2,33 @@
 GPA calculation helpers and grading scale definitions
 """
 
+# ── Regions ───────────────────────────────────────────────────────────────────
+# Each supported region is locked to exactly one grading scale. A student
+# picks their region (not the scale directly) so the scale always matches
+# how their institution actually grades.
+
+REGIONS = {
+    "us_international": {
+        "label": "United States / International",
+        "scale": "4.0",
+    },
+    "nigeria_west_africa": {
+        "label": "Nigeria / West Africa",
+        "scale": "5.0",
+    },
+    "australia": {
+        "label": "Australia",
+        "scale": "7.0",
+    },
+}
+
+
+def region_to_scale(region: str) -> str | None:
+    """Return the grading scale for a region key, or None if unsupported."""
+    entry = REGIONS.get(region)
+    return entry["scale"] if entry else None
+
+
 # ── Grading Scales ─────────────────────────────────────────────────────────────
 
 SCALES = {

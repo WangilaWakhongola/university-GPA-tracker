@@ -20,7 +20,8 @@ class User(db.Model):
     full_name     = db.Column(db.String(120), nullable=False)
     university    = db.Column(db.String(200), nullable=True)
     program       = db.Column(db.String(200), nullable=True)
-    grading_scale = db.Column(db.String(20),  default="4.0")  # "4.0" | "5.0" | "7.0"
+    region        = db.Column(db.String(30),  nullable=False, default="us_international")
+    grading_scale = db.Column(db.String(20),  default="4.0")  # derived from region, never set directly
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
 
     semesters = db.relationship("Semester", backref="user", lazy=True, cascade="all, delete-orphan")
@@ -39,6 +40,7 @@ class User(db.Model):
             "full_name":     self.full_name,
             "university":    self.university,
             "program":       self.program,
+            "region":        self.region,
             "grading_scale": self.grading_scale,
             "created_at":    self.created_at.isoformat(),
         }

@@ -1,11 +1,20 @@
 // src/pages/SemesterDetail.jsx — view/edit/delete courses in a semester
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
-import { getGradeOptions, getGradePoint, formatGpa } from "../utils/gpa";
+import { getGradeOptions, getGradePoint, formatGpa, classifyGpa } from "../utils/gpa";
 import toast from "react-hot-toast";
+
+const BADGE_MAP = {
+  green:  "badge-green",
+  blue:   "badge-blue",
+  yellow: "badge-yellow",
+  orange: "badge-orange",
+  red:    "badge-red",
+  gray:   "badge-gray",
+};
 
 const EMPTY_FORM = { name: "", code: "", credit_hours: 3, grade: "A" };
 
@@ -21,6 +30,11 @@ export default function SemesterDetail() {
   const [editing,   setEditing]   = useState(null); // course id being edited
   const [editForm,  setEditForm]  = useState({});
   const [saving,    setSaving]    = useState(false);
+
+  const [uploading,      setUploading]      = useState(false);
+  const [preview,        setPreview]        = useState(null); // parsed rows awaiting confirmation
+  const [confirmingRows, setConfirmingRows] = useState(false);
+  const fileInputRef = useRef(null);
 
   const gradeOptions = getGradeOptions(scale);
 
@@ -86,6 +100,64 @@ export default function SemesterDetail() {
     }
   };
 
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Please upload a PDF file");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post(`/semesters/${id}/transcript/parse`, formData);
+      setPreview(data.parsed_courses.map((c, i) => ({ ...c, _key: i, _include: true })));
+      toast.success(`Found ${data.count} course${data.count === 1 ? "" : "s"} — review before saving`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Couldn't read that transcript");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const updatePreviewRow = (key, field, value) => {
+    setPreview((rows) => rows.map((r) => (r._key === key ? { ...r, [field]: value } : r)));
+  };
+
+  const removePreviewRow = (key) => {
+    setPreview((rows) => rows.filter((r) => r._key !== key));
+  };
+
+  const cancelPreview = () => setPreview(null);
+
+  const confirmPreview = async () => {
+    const rows = preview.filter((r) => r._include);
+    if (rows.length === 0) {
+      toast.error("Select at least one course to save");
+      return;
+    }
+    setConfirmingRows(true);
+    try {
+      const payload = {
+        courses: rows.map((r) => ({
+          name: r.name, code: r.code, credit_hours: r.credit_hours, grade: r.grade,
+        })),
+      };
+      const { data } = await api.post(`/semesters/${id}/transcript/confirm`, payload);
+      setSemester(data.semester);
+      setPreview(null);
+      toast.success(`Added ${data.added} course${data.added === 1 ? "" : "s"}`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to save courses");
+    } finally {
+      setConfirmingRows(false);
+    }
+  };
+
   const handle      = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleEdit  = (e) => setEditForm({ ...editForm, [e.target.name]: e.target.value });
 
@@ -93,6 +165,8 @@ export default function SemesterDetail() {
   if (!semester) return null;
 
   const totalCredits = semester.courses.reduce((a, c) => a + c.credit_hours, 0);
+  const classification = classifyGpa(semester.gpa, scale);
+  const badgeCls = BADGE_MAP[classification.color] || "badge-gray";
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -118,13 +192,106 @@ export default function SemesterDetail() {
           <p className="text-3xl font-bold text-primary-600 dark:text-primary-400">
             {formatGpa(semester.gpa)}
           </p>
+          {semester.courses.length > 0 && (
+            <span className={`${badgeCls} mt-1`}>{classification.cls}</span>
+          )}
         </div>
       </div>
 
-      {/* Add course button */}
-      <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
-        {showForm ? "Cancel" : "+ Add course"}
-      </button>
+      {/* Add course / upload transcript buttons */}
+      <div className="flex flex-wrap gap-3">
+        <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
+          {showForm ? "Cancel" : "+ Add course"}
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="btn-secondary"
+          disabled={uploading}
+        >
+          {uploading ? "Reading transcript…" : "Upload transcript (PDF)"}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+      </div>
+
+      {/* Transcript preview — nothing is saved until confirmed */}
+      {preview && (
+        <div className="card p-5 space-y-4 border-primary-200 dark:border-primary-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="section-header">Review detected courses</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Nothing is saved yet. Check the grades below, uncheck anything that
+                looks wrong, then confirm.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-hidden border border-gray-200 dark:border-gray-800 rounded-lg">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50">
+                  <th className="text-left px-3 py-2 font-medium w-8"></th>
+                  <th className="text-left px-3 py-2 font-medium">Course</th>
+                  <th className="text-left px-3 py-2 font-medium w-24">Code</th>
+                  <th className="text-center px-3 py-2 font-medium w-20">Credits</th>
+                  <th className="text-center px-3 py-2 font-medium w-24">Grade</th>
+                  <th className="px-3 py-2 w-10"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {preview.map((row) => (
+                  <tr key={row._key} className={row._include ? "" : "opacity-40"}>
+                    <td className="px-3 py-2">
+                      <input type="checkbox" checked={row._include}
+                        onChange={(e) => updatePreviewRow(row._key, "_include", e.target.checked)} />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input className="input text-xs py-1" value={row.name}
+                        onChange={(e) => updatePreviewRow(row._key, "name", e.target.value)} />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input className="input text-xs py-1" value={row.code}
+                        onChange={(e) => updatePreviewRow(row._key, "code", e.target.value)} />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="number" min="0.5" max="12" step="0.5"
+                        className="input text-xs py-1 text-center" value={row.credit_hours}
+                        onChange={(e) => updatePreviewRow(row._key, "credit_hours", e.target.value)} />
+                    </td>
+                    <td className="px-3 py-2">
+                      <select className="input text-xs py-1" value={row.grade}
+                        onChange={(e) => updatePreviewRow(row._key, "grade", e.target.value)}>
+                        {gradeOptions.map((g) => <option key={g}>{g}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button onClick={() => removePreviewRow(row._key)}
+                        className="text-xs text-red-500 hover:text-red-700">✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={confirmPreview} className="btn-primary" disabled={confirmingRows}>
+              {confirmingRows
+                ? "Saving…"
+                : `Confirm & save ${preview.filter((r) => r._include).length} course${preview.filter((r) => r._include).length === 1 ? "" : "s"}`}
+            </button>
+            <button onClick={cancelPreview} className="btn-secondary" disabled={confirmingRows}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Add course form */}
       {showForm && (
